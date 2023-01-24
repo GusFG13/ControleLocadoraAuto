@@ -31,6 +31,7 @@ namespace ControleLocadoraAuto.ArquivosBD
             catch (IOException e)
             {
                 MessageBox.Show("Aconteceu um erro inesperado no banco de dados: " + e.Message,"ERRO",MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Application.Exit();
                 return null;
             }
         }

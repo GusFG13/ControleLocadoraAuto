@@ -3,65 +3,92 @@ using ControleLocadoraAuto.Entities;
 using ControleLocadoraAuto.Entities.Enums;
 using ControleLocadoraAuto.Services;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Reflection;
+using System.Drawing;
 
 namespace ControleLocadoraAuto
 {
     public partial class Form1 : Form
     {
-        string sourcePath = @"c:\temp\ListaCarros.csv";
+        string sourcePath = @"c:\temp\LocadoraVeiculos\ListaCarros.csv";
+        string imagemPath = @"c:\temp\LocadoraVeiculos\fotosCarros\";
+        // variáveis que criadas ao abrir o form
+        List<string> ListaCarros = new List<string>();
+        string[] modelosDisponiveis;
+
+        AluguelCarro aluguelCarro;
+
+        ServicoAluguel servicoAluguel;
+
         public Form1()
         {
             InitializeComponent();
+            rbBasico.Checked = true;
+            //cbCarrosDisponiveis.DataSource = Leitura.ListarVeiculos(sourcePath, Categorias.Basico);
         }
 
         private void btCalcular_Click(object sender, EventArgs e)
-        { 
-            //DateTime myDate = datePortionDateTimePicker.Value.Date + timePortionDateTimePicker.Value.TimeOfDay;
+        {
             DateTime inicio = dtpDataHoraInicio.Value;
             DateTime fim = dtpDataHoraFim.Value;
 
-            double hora = double.Parse(tbValorHora.Text, CultureInfo.InvariantCulture);
-            double dia = double.Parse(tbValorDia.Text, CultureInfo.InvariantCulture);
 
-            AluguelCarro aluguelCarro = new AluguelCarro(inicio, fim, new Veiculo("Civic"));
+            // teste adicionado
+            if (cbCarrosDisponiveis.DataSource != null && fim > inicio && inicio.Hour >= DateTime.Now.Hour)
+            {
+                double hora = double.Parse(tbValorHora.Text, CultureInfo.InvariantCulture);
+                double dia = double.Parse(tbValorDia.Text, CultureInfo.InvariantCulture);
 
-            ServicoAluguel servicoAluguel = new ServicoAluguel(hora, dia, new TaxaServicoBasico());
+                int indice = cbCarrosDisponiveis.SelectedIndex;
+                string[] aux = modelosDisponiveis[indice].Split(';');
+                int id = int.Parse(aux[0]);
+                string modelo = aux[1];
+                Categorias categoria;
+                Enum.TryParse(aux[2], out categoria);
+                int anoFabricacao = int.Parse(aux[3]);
+                bool disponivel = bool.Parse(aux[4]);
 
-            if (rbBasico.Checked)
+                Veiculo veiculo = new Veiculo(id, modelo, categoria, anoFabricacao, disponivel);
+                //aluguelCarro = new AluguelCarro(inicio, fim, new Veiculo("Civic"));
+                aluguelCarro = new AluguelCarro(inicio, fim, veiculo);
+
                 servicoAluguel = new ServicoAluguel(hora, dia, new TaxaServicoBasico());
-            else if (rbIntermediario.Checked)
-                servicoAluguel = new ServicoAluguel(hora, dia, new TaxaServicoIntermediario());
-            else if (rbLuxo.Checked)
-                servicoAluguel = new ServicoAluguel(hora, dia, new TaxaServicoLuxo());
-            
-            servicoAluguel.ProcessInvoice(aluguelCarro);
 
-            rtbFaturaCalculada.Text = aluguelCarro.Fatura.ToString();
+                if (rbBasico.Checked)
+                    servicoAluguel = new ServicoAluguel(hora, dia, new TaxaServicoBasico());
+                else if (rbIntermediario.Checked)
+                    servicoAluguel = new ServicoAluguel(hora, dia, new TaxaServicoIntermediario());
+                else if (rbLuxo.Checked)
+                    servicoAluguel = new ServicoAluguel(hora, dia, new TaxaServicoLuxo());
+
+                servicoAluguel.ProcessInvoice(aluguelCarro);
+
+                rtbFaturaCalculada.Text = veiculo.ToString() + "\n\n" + aluguelCarro.Fatura.ToString();
+                btAlugar.Enabled = true;
+            }
+
         }
 
         private void rbBasico_CheckedChanged(object sender, EventArgs e)
         {
-            CategoriaSelecionada(Categorias.Basico);
-            
+            if (rbBasico.Checked) // teste adicionado
+                CategoriaSelecionada(Categorias.Basico);
         }
 
         private void rbIntemediario_CheckedChanged(object sender, EventArgs e)
         {
-            CategoriaSelecionada(Categorias.Intermediario);
+            if (rbIntermediario.Checked) // teste adicionado
+                CategoriaSelecionada(Categorias.Intermediario);
         }
 
         private void rbLuxo_CheckedChanged(object sender, EventArgs e)
         {
-            CategoriaSelecionada(Categorias.Luxo);
+            if (rbLuxo.Checked) // teste adicionado
+                CategoriaSelecionada(Categorias.Luxo);
         }
 
         private void CategoriaSelecionada(Categorias cat)
@@ -71,20 +98,81 @@ namespace ControleLocadoraAuto
                 case Categorias.Basico:
                     tbValorHora.Text = TaxaServicoBasico.ValorPorHora.ToString("F2", CultureInfo.InvariantCulture);
                     tbValorDia.Text = TaxaServicoBasico.ValorPorDia.ToString("F2", CultureInfo.InvariantCulture);
-                    cbCarrosDisponiveis.DataSource = Leitura.ListarVeiculos(sourcePath, Categorias.Basico);
+                    ListaCarros = Leitura.ListarVeiculos(sourcePath, Categorias.Basico);
                     break;
                 case Categorias.Intermediario:
                     tbValorHora.Text = TaxaServicoIntermediario.ValorPorHora.ToString("F2", CultureInfo.InvariantCulture);
                     tbValorDia.Text = TaxaServicoIntermediario.ValorPorDia.ToString("F2", CultureInfo.InvariantCulture);
-                    cbCarrosDisponiveis.DataSource = Leitura.ListarVeiculos(sourcePath, Categorias.Intermediario);
+                    ListaCarros = Leitura.ListarVeiculos(sourcePath, Categorias.Intermediario);
                     break;
                 case Categorias.Luxo:
                     tbValorHora.Text = TaxaServicoLuxo.ValorPorHora.ToString("F2", CultureInfo.InvariantCulture);
                     tbValorDia.Text = TaxaServicoLuxo.ValorPorDia.ToString("F2", CultureInfo.InvariantCulture);
-                    cbCarrosDisponiveis.DataSource = Leitura.ListarVeiculos(sourcePath, Categorias.Luxo);
+                    ListaCarros = Leitura.ListarVeiculos(sourcePath, Categorias.Luxo);
                     break;
-                default: 
+                default:
                     break;
+            }
+            // teste adicionado
+            if (ListaCarros.Count > 0)
+            {
+                List<string> modeloAno = new List<string>();
+                modelosDisponiveis = ListaCarros.ToArray();
+                foreach (string carro in modelosDisponiveis)
+                {
+                    string[] aux = carro.Split(';');
+                    modeloAno.Add(aux[1] + " " + aux[3]);
+                }
+                cbCarrosDisponiveis.DataSource = modeloAno;
+            }
+            else
+            {
+                cbCarrosDisponiveis.DataSource = null;
+                MessageBox.Show("Não há carros disponíveis na categoria selecionada.", "Categoria indisponível!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            }
+
+        }
+
+        private void cbCarrosDisponiveis_SelectedIndexChanged(object sender, EventArgs e)
+        {// teste adicionado
+            rtbFaturaCalculada.Text = "";
+            btAlugar.Enabled = false;
+            int indice = cbCarrosDisponiveis.SelectedIndex;
+            string id = modelosDisponiveis[indice].Split(';')[0];
+            picFotoCarro.ImageLocation = imagemPath + id + ".png";
+        }
+
+        private void btTelaDevolucao_Click(object sender, EventArgs e)
+        {
+            panAlugar.Visible = false;
+            btTelaAluguel.BackColor = Color.Transparent;
+            btTelaAluguel.ForeColor = Color.LightGray;
+            btTelaDevolucao.BackColor = Color.LightGray;
+            btTelaDevolucao.ForeColor = Color.Black;
+        }
+
+        private void btTelaAluguel_Click(object sender, EventArgs e)
+        {
+            panAlugar.Visible = true;
+            btTelaDevolucao.BackColor = Color.Transparent;
+            btTelaDevolucao.ForeColor = Color.LightGray;
+            btTelaAluguel.BackColor = Color.LightGray;
+            btTelaAluguel.ForeColor = Color.Black;
+        }
+
+        private void btSair_Click(object sender, EventArgs e)
+        {
+                Application.Exit();
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            {// evita fechamento do app por engano ao clicar no botão fechar janela ou pressionar Alt + F4
+                DialogResult resposta = MessageBox.Show("Deseja realmente sair?", "Sair", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (resposta == DialogResult.No)
+                {
+                    e.Cancel = true;
+                }
             }
         }
     }
