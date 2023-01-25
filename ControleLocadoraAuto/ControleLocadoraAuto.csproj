@@ -46,6 +46,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ArquivosBD\Atualizacao.cs" />
     <Compile Include="ArquivosBD\Leitura.cs" />
     <Compile Include="Entities\AluguelCarro.cs" />
     <Compile Include="Entities\Enums\Categorias.cs" />

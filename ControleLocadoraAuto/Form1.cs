@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Reflection;
 using System.Drawing;
+using System.IO;
 
 namespace ControleLocadoraAuto
 {
@@ -19,10 +20,13 @@ namespace ControleLocadoraAuto
         // variáveis que criadas ao abrir o form
         List<string> ListaCarros = new List<string>();
         string[] modelosDisponiveis;
+        int id;
 
         AluguelCarro aluguelCarro;
 
         ServicoAluguel servicoAluguel;
+
+        DateTime aberturaApp = DateTime.Now;
 
         public Form1()
         {
@@ -38,14 +42,14 @@ namespace ControleLocadoraAuto
 
 
             // teste adicionado
-            if (cbCarrosDisponiveis.DataSource != null && fim > inicio && inicio.Hour >= DateTime.Now.Hour)
+            if (cbCarrosDisponiveis.DataSource != null && fim > inicio && inicio >= aberturaApp)
             {
                 double hora = double.Parse(tbValorHora.Text, CultureInfo.InvariantCulture);
                 double dia = double.Parse(tbValorDia.Text, CultureInfo.InvariantCulture);
 
                 int indice = cbCarrosDisponiveis.SelectedIndex;
                 string[] aux = modelosDisponiveis[indice].Split(';');
-                int id = int.Parse(aux[0]);
+                id = int.Parse(aux[0]);
                 string modelo = aux[1];
                 Categorias categoria;
                 Enum.TryParse(aux[2], out categoria);
@@ -73,6 +77,13 @@ namespace ControleLocadoraAuto
 
         }
 
+        private void btAlugar_Click(object sender, EventArgs e)
+        {
+            DateTime inicio = dtpDataHoraInicio.Value;
+            Atualizacao.AtualizarRegistro(sourcePath, id, inicio);
+            MessageBox.Show("Carro alugado", "Operação concluída", MessageBoxButtons.OK, MessageBoxIcon.Information); 
+        }
+
         private void rbBasico_CheckedChanged(object sender, EventArgs e)
         {
             if (rbBasico.Checked) // teste adicionado
@@ -98,17 +109,17 @@ namespace ControleLocadoraAuto
                 case Categorias.Basico:
                     tbValorHora.Text = TaxaServicoBasico.ValorPorHora.ToString("F2", CultureInfo.InvariantCulture);
                     tbValorDia.Text = TaxaServicoBasico.ValorPorDia.ToString("F2", CultureInfo.InvariantCulture);
-                    ListaCarros = Leitura.ListarVeiculos(sourcePath, Categorias.Basico);
+                    ListaCarros = Leitura.ListarVeiculos(sourcePath, Categorias.Basico, true);
                     break;
                 case Categorias.Intermediario:
                     tbValorHora.Text = TaxaServicoIntermediario.ValorPorHora.ToString("F2", CultureInfo.InvariantCulture);
                     tbValorDia.Text = TaxaServicoIntermediario.ValorPorDia.ToString("F2", CultureInfo.InvariantCulture);
-                    ListaCarros = Leitura.ListarVeiculos(sourcePath, Categorias.Intermediario);
+                    ListaCarros = Leitura.ListarVeiculos(sourcePath, Categorias.Intermediario, true);
                     break;
                 case Categorias.Luxo:
                     tbValorHora.Text = TaxaServicoLuxo.ValorPorHora.ToString("F2", CultureInfo.InvariantCulture);
                     tbValorDia.Text = TaxaServicoLuxo.ValorPorDia.ToString("F2", CultureInfo.InvariantCulture);
-                    ListaCarros = Leitura.ListarVeiculos(sourcePath, Categorias.Luxo);
+                    ListaCarros = Leitura.ListarVeiculos(sourcePath, Categorias.Luxo, true);
                     break;
                 default:
                     break;
@@ -145,14 +156,27 @@ namespace ControleLocadoraAuto
         private void btTelaDevolucao_Click(object sender, EventArgs e)
         {
             panAlugar.Visible = false;
+            panDevolver.Visible = true;
             btTelaAluguel.BackColor = Color.Transparent;
             btTelaAluguel.ForeColor = Color.LightGray;
             btTelaDevolucao.BackColor = Color.LightGray;
             btTelaDevolucao.ForeColor = Color.Black;
+
+            List<string> listAux = new List<string>();
+            //Preencher listBox
+            foreach(string item in Leitura.ListarVeiculos(sourcePath, false))
+            {
+                string[] aux = item.Split(';');
+                listAux.Add(aux[0] + "\t" + aux[1] + "\t" + aux[5]);
+            }
+
+            lstCrrosAlugados.DataSource = listAux;
+
         }
 
         private void btTelaAluguel_Click(object sender, EventArgs e)
         {
+            panDevolver.Visible = false;
             panAlugar.Visible = true;
             btTelaDevolucao.BackColor = Color.Transparent;
             btTelaDevolucao.ForeColor = Color.LightGray;
@@ -174,6 +198,53 @@ namespace ControleLocadoraAuto
                     e.Cancel = true;
                 }
             }
+        }
+
+        private void lstCrrosAlugados_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            int idAlugado = int.Parse(lstCrrosAlugados.SelectedItem.ToString().Split('\t')[0]);
+            string dadosVeiculo = Leitura.VeiculoAlugado(sourcePath, idAlugado);
+            DateTime momentoAluguel = DateTime.Parse(dadosVeiculo.Split(';')[5]);
+            Categorias categoria = Categorias.Basico;
+            Enum.TryParse(dadosVeiculo.Split(';')[2], out categoria);
+
+
+            double hora = 0.0;
+            double dia = 0.0;
+            switch (categoria)
+            {
+                case Categorias.Basico:
+                    hora = TaxaServicoBasico.ValorPorHora;
+                    dia = TaxaServicoBasico.ValorPorDia;
+                    break;
+                case Categorias.Intermediario:
+                    hora = TaxaServicoIntermediario.ValorPorHora;
+                    dia = TaxaServicoIntermediario.ValorPorDia;
+                    break;
+                case Categorias.Luxo:
+                    hora = TaxaServicoLuxo.ValorPorHora;
+                    dia = TaxaServicoLuxo.ValorPorDia;
+                    break;
+                default:
+                    break;
+            }
+
+            Veiculo veiculo = new Veiculo(id);
+
+            aluguelCarro = new AluguelCarro(momentoAluguel, DateTime.Now, veiculo);
+
+            servicoAluguel = new ServicoAluguel(hora, dia, new TaxaServicoBasico());
+
+            if (rbBasico.Checked)
+                servicoAluguel = new ServicoAluguel(hora, dia, new TaxaServicoBasico());
+            else if (rbIntermediario.Checked)
+                servicoAluguel = new ServicoAluguel(hora, dia, new TaxaServicoIntermediario());
+            else if (rbLuxo.Checked)
+                servicoAluguel = new ServicoAluguel(hora, dia, new TaxaServicoLuxo());
+
+            servicoAluguel.ProcessInvoice(aluguelCarro);
+
+            rtbFatura.Text = veiculo.ToString() + "\n\n" + aluguelCarro.Fatura.ToString();
         }
     }
 }

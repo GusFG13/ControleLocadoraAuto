@@ -20,9 +20,15 @@ namespace ControleLocadoraAuto.Entities
             Disponivel = disponivel;
         }
 
+
         public Veiculo(string modelo)
         {
             Modelo = modelo;
+        }
+
+        public Veiculo(int id)
+        {
+            Id = id;
         }
 
         public override string ToString()
