@@ -32,6 +32,9 @@ namespace ControleLocadoraAuto
         {
             InitializeComponent();
             rbBasico.Checked = true;
+            panDevolver.Visible = false;
+            panAlugar.Visible = true;
+            panAlugar.Location = new Point(125, 15);
             //cbCarrosDisponiveis.DataSource = Leitura.ListarVeiculos(sourcePath, Categorias.Basico);
         }
 
@@ -40,9 +43,19 @@ namespace ControleLocadoraAuto
             DateTime inicio = dtpDataHoraInicio.Value;
             DateTime fim = dtpDataHoraFim.Value;
 
-
+            bool datasOK = true;
+            if (inicio < aberturaApp)
+            {
+                rtbFaturaCalculada.Text = $"Data de retirada não pode ser anterior a agora ({DateTime.Now.ToString("dd/MM/yyyy HH:mm")}).";
+                datasOK = false;
+            }
+            else if (inicio > fim)
+            {
+                rtbFaturaCalculada.Text = "Data de retirada deve ser antes da data de devolução.";
+                datasOK = false;
+            }
             // teste adicionado
-            if (cbCarrosDisponiveis.DataSource != null && fim > inicio && inicio >= aberturaApp)
+            if (cbCarrosDisponiveis.DataSource != null && datasOK)
             {
                 double hora = double.Parse(tbValorHora.Text, CultureInfo.InvariantCulture);
                 double dia = double.Parse(tbValorDia.Text, CultureInfo.InvariantCulture);
@@ -71,7 +84,11 @@ namespace ControleLocadoraAuto
 
                 servicoAluguel.ProcessInvoice(aluguelCarro);
 
-                rtbFaturaCalculada.Text = veiculo.ToString() + "\n\n" + aluguelCarro.Fatura.ToString();
+                rtbFaturaCalculada.Text = "Veículo alugado: " + veiculo.Modelo
+                    + "\nAno Modelo: " + veiculo.AnoFabricacao
+                    + "\nData retirada:  " + inicio.ToString("dd/MM/yyyy HH:mm")
+                    + "\nData devolução: " + fim.ToString("dd/MM/yyyy HH:mm")
+                    + "\n\n" + aluguelCarro.Fatura.ToString();
                 btAlugar.Enabled = true;
             }
 
@@ -79,9 +96,21 @@ namespace ControleLocadoraAuto
 
         private void btAlugar_Click(object sender, EventArgs e)
         {
-            DateTime inicio = dtpDataHoraInicio.Value;
-            Atualizacao.AtualizarRegistro(sourcePath, id, inicio);
-            MessageBox.Show("Carro alugado", "Operação concluída", MessageBoxButtons.OK, MessageBoxIcon.Information); 
+            //DateTime inicio = dtpDataHoraInicio.Value;
+            DialogResult resp = MessageBox.Show("Deseja alugar o veículo selecionado agora?", "Alugar", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (resp == DialogResult.Yes)
+            {
+                DateTime inicio = DateTime.Now;
+                bool operacaoOk = Atualizacao.AtualizarRegistro(sourcePath, id, inicio, "alugar");
+                if (operacaoOk)
+                {
+                    btAlugar.Enabled = false;
+                    MessageBox.Show("Carro alugado", "Operação concluída", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    rbBasico.Checked = false;
+                    rbBasico.Checked = true;
+                }
+            }
+
         }
 
         private void rbBasico_CheckedChanged(object sender, EventArgs e)
@@ -124,23 +153,27 @@ namespace ControleLocadoraAuto
                 default:
                     break;
             }
+            Atualizar_cbCarrosDisponiveis(ListaCarros);
             // teste adicionado
-            if (ListaCarros.Count > 0)
-            {
-                List<string> modeloAno = new List<string>();
-                modelosDisponiveis = ListaCarros.ToArray();
-                foreach (string carro in modelosDisponiveis)
-                {
-                    string[] aux = carro.Split(';');
-                    modeloAno.Add(aux[1] + " " + aux[3]);
-                }
-                cbCarrosDisponiveis.DataSource = modeloAno;
-            }
-            else
-            {
-                cbCarrosDisponiveis.DataSource = null;
-                MessageBox.Show("Não há carros disponíveis na categoria selecionada.", "Categoria indisponível!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-            }
+            //if (ListaCarros.Count > 0)
+            //{
+            //    //List<string> modeloAno = new List<string>();
+            //    //modelosDisponiveis = ListaCarros.ToArray();
+            //    //foreach (string carro in modelosDisponiveis)
+            //    //{
+            //    //    string[] aux = carro.Split(';');
+            //    //    modeloAno.Add(aux[1] + " " + aux[3]);
+            //    //}
+            //    //cbCarrosDisponiveis.DataSource = modeloAno;
+            //    cbCarrosDisponiveis.Enabled = true;
+            //    btCalcular.Enabled = true;
+            //}
+            //else
+            //{
+            //    btCalcular.Enabled = false;
+            //    cbCarrosDisponiveis.Enabled = false;
+            //    //MessageBox.Show("Não há carros disponíveis na categoria selecionada.", "Categoria indisponível!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            //}
 
         }
 
@@ -162,15 +195,25 @@ namespace ControleLocadoraAuto
             btTelaDevolucao.BackColor = Color.LightGray;
             btTelaDevolucao.ForeColor = Color.Black;
 
+            Atualizar_lstCarrosAlugados();
+        }
+
+        private void Atualizar_lstCarrosAlugados()
+        {
             List<string> listAux = new List<string>();
             //Preencher listBox
-            foreach(string item in Leitura.ListarVeiculos(sourcePath, false))
+            foreach (string item in Leitura.ListarVeiculos(sourcePath, false))
             {
                 string[] aux = item.Split(';');
-                listAux.Add(aux[0] + "\t" + aux[1] + "\t" + aux[5]);
+                //listAux.Add(aux[0] + "\t" + aux[1] + "\t" + aux[5]);
+                listAux.Add(aux[0].PadRight(3) + "|" + aux[1].PadRight(25) + "|" + aux[5]);
             }
 
-            lstCrrosAlugados.DataSource = listAux;
+            lstCarrosAlugados.DataSource = listAux;
+            if (listAux.Count == 0)
+                btDevolver.Enabled = false;
+            else
+                btDevolver.Enabled = true;
 
         }
 
@@ -186,7 +229,7 @@ namespace ControleLocadoraAuto
 
         private void btSair_Click(object sender, EventArgs e)
         {
-                Application.Exit();
+            Application.Exit();
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
@@ -200,14 +243,19 @@ namespace ControleLocadoraAuto
             }
         }
 
-        private void lstCrrosAlugados_SelectedIndexChanged(object sender, EventArgs e)
+        private void lstCarrosAlugados_SelectedIndexChanged(object sender, EventArgs e)
         {
-            int idAlugado = int.Parse(lstCrrosAlugados.SelectedItem.ToString().Split('\t')[0]);
+            //int idAlugado = int.Parse(lstCarrosAlugados.SelectedItem.ToString().Split('\t')[0]);
+            int idAlugado = int.Parse(lstCarrosAlugados.SelectedItem.ToString().Split('|')[0]);
             string dadosVeiculo = Leitura.VeiculoAlugado(sourcePath, idAlugado);
-            DateTime momentoAluguel = DateTime.Parse(dadosVeiculo.Split(';')[5]);
+            string[] aux = dadosVeiculo.Split(';');
+            string modelo = aux[1];
+            DateTime momentoAluguel = DateTime.Parse(aux[5]);
             Categorias categoria = Categorias.Basico;
-            Enum.TryParse(dadosVeiculo.Split(';')[2], out categoria);
-
+            Enum.TryParse(aux[2], out categoria);
+            int anoFabr = int.Parse(aux[3]);
+            Veiculo veiculo = new Veiculo(idAlugado, modelo, categoria, anoFabr, false);
+            DateTime horaDevolucao = DateTime.Now;
 
             double hora = 0.0;
             double dia = 0.0;
@@ -229,9 +277,8 @@ namespace ControleLocadoraAuto
                     break;
             }
 
-            Veiculo veiculo = new Veiculo(id);
 
-            aluguelCarro = new AluguelCarro(momentoAluguel, DateTime.Now, veiculo);
+            aluguelCarro = new AluguelCarro(momentoAluguel, horaDevolucao, veiculo);
 
             servicoAluguel = new ServicoAluguel(hora, dia, new TaxaServicoBasico());
 
@@ -244,7 +291,67 @@ namespace ControleLocadoraAuto
 
             servicoAluguel.ProcessInvoice(aluguelCarro);
 
-            rtbFatura.Text = veiculo.ToString() + "\n\n" + aluguelCarro.Fatura.ToString();
+            rtbFatura.Text = "Veículo alugado: " + veiculo.Modelo
+                + "\n\nData retirada:  " + momentoAluguel.ToString("dd/MM/yyyy HH:mm")
+                + "\nData devolução: " + horaDevolucao.ToString("dd/MM/yyyy HH:mm")
+                + "\n\n" + aluguelCarro.Fatura.ToString();
+        }
+
+        private void btDevolver_Click(object sender, EventArgs e)
+        {
+            DialogResult resp = MessageBox.Show("Deseja devolver o veículo selecionado?", "Devolver", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (resp == DialogResult.Yes)
+            {
+                string aux = lstCarrosAlugados.SelectedItem.ToString();
+                bool operacaoOk = Atualizacao.AtualizarRegistro(sourcePath, int.Parse(aux.Split('|')[0]), DateTime.Now, "devolver");
+                if (operacaoOk)
+                {
+                    Atualizar_lstCarrosAlugados();
+                    rtbFatura.Text = "";
+                    //Atualizar_cbCarrosDisponiveis(Leitura.ListarVeiculos(sourcePath, Categorias.Basico, true));
+                    rbBasico.Checked = false;
+                    rbBasico.Checked = true;
+                    MessageBox.Show("Operação concluída", "Devolução", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+        }
+
+        private void Atualizar_cbCarrosDisponiveis(List<string> lista)
+        {
+            if (lista.Count > 0)
+            {
+                List<string> modeloAno = new List<string>();
+                modelosDisponiveis = ListaCarros.ToArray();
+                foreach (string carro in modelosDisponiveis)
+                {
+                    string[] aux = carro.Split(';');
+                    modeloAno.Add(aux[1] + " " + aux[3]);
+                }
+                cbCarrosDisponiveis.DataSource = modeloAno;
+                cbCarrosDisponiveis.Enabled = true;
+                btCalcular.Enabled = true;
+            }
+            else
+            {
+                btCalcular.Enabled = false;
+                cbCarrosDisponiveis.Enabled = false;
+                //MessageBox.Show("Não há carros disponíveis na categoria selecionada.", "Categoria indisponível!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            }
+        }
+
+        private void MudancaDatas()
+        {
+            rtbFaturaCalculada.Text = "";
+            btAlugar.Enabled = false;
+        }
+        private void dtpDataHoraInicio_ValueChanged(object sender, EventArgs e)
+        {
+            MudancaDatas();
+        }
+
+        private void dtpDataHoraFim_ValueChanged(object sender, EventArgs e)
+        {
+            MudancaDatas();
         }
     }
 }

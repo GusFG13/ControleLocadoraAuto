@@ -26,11 +26,6 @@ namespace ControleLocadoraAuto.Entities
             Modelo = modelo;
         }
 
-        public Veiculo(int id)
-        {
-            Id = id;
-        }
-
         public override string ToString()
         {
             return Id 

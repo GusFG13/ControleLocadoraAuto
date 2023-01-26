@@ -10,22 +10,40 @@ namespace ControleLocadoraAuto.ArquivosBD
 {
     public class Atualizacao
     {
-        public static void AtualizarRegistro(string path, int id, DateTime dataHoraAluguel) 
+        public static bool AtualizarRegistro(string path, int id, DateTime dataHoraAluguel, string operacao) 
         {
             try
             {
                 string[] lines = File.ReadAllLines(path);
-                for (int i = 0; i < lines.Length; i++)
+                if (operacao == "alugar")
                 {
-                    if (int.Parse(lines[i].Split(';')[0]) == id)
+                    for (int i = 0; i < lines.Length; i++)
                     {
-                        string[] aux = lines[i].Split(';');
-                        aux[4] = false.ToString();
-                        aux[5] = dataHoraAluguel.ToString("dd/MM/yyyy HH:mm");
+                        if (int.Parse(lines[i].Split(';')[0]) == id)
+                        {
+                            string[] aux = lines[i].Split(';');
+                            aux[4] = "false";
+                            aux[5] = dataHoraAluguel.ToString("dd/MM/yyyy HH:mm");
 
-                        lines[i] = String.Join(";", aux);
+                            lines[i] = String.Join(";", aux);
+                        }
                     }
                 }
+                else if (operacao == "devolver")
+                {
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        if (int.Parse(lines[i].Split(';')[0]) == id)
+                        {
+                            string[] aux = lines[i].Split(';');
+                            aux[4] = "true";
+                            aux[5] = "";
+
+                            lines[i] = String.Join(";", aux);
+                        }
+                    }
+                }
+
 
                 StringBuilder sb = new StringBuilder();
                 foreach (string line in lines)
@@ -36,10 +54,12 @@ namespace ControleLocadoraAuto.ArquivosBD
                 {
                     writer.Write(sb.ToString());
                 }
+                return true;
             }
             catch (IOException e)
-            {
+            {             
                 MessageBox.Show("Aconteceu um erro inesperado no banco de dados: " + e.Message, "ERRO", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
             }
 
         }

@@ -20,11 +20,12 @@ namespace ControleLocadoraAuto.Entities
 
         public override string ToString()
         {
-            return "Pagamento básico: "
-                + PagamentoBasico.ToString("F2", CultureInfo.InvariantCulture)
-                + "\nTaxa: "
-                + Taxa.ToString("F2", CultureInfo.InvariantCulture)
-                + "\nPagamento total: "
+            return "Valores:\n"
+                + "Aluguel: "
+                + PagamentoBasico.ToString("F2", CultureInfo.InvariantCulture) + "\n"
+                + "   Taxa: "
+                + Taxa.ToString("F2", CultureInfo.InvariantCulture) + "\n"
+                + "  Total: "
                 + PagamentoTotal.ToString("F2", CultureInfo.InvariantCulture);
         }
     }
